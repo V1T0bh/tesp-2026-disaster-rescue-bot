@@ -39,6 +39,11 @@ motor ArmMotor = motor(PORT10, true);
 motor LeftDriveSmart = motor(PORT6, 1, false);
 motor RightDriveSmart = motor(PORT1, 1, true);
 
+touchled TouchLED2 = touchled(PORT2);
+optical Optical3 = optical(PORT3);
+distance Distance7 = distance(PORT7);
+bumper Bumper8 = bumper(PORT8);
+
 void calibrateDrivetrain() {
   wait(200, msec);
   Brain.Screen.print("Calibrating");
@@ -103,10 +108,46 @@ int rc_auto_loop_function_Controller() {
   return 0;
 }
 
+int sensor_check() {
+
+  while (true){
+    wait(25, msec);
+
+    // DUMMY CODE
+    Brain.Screen.print("Check TouchLED...");
+    Brain.Screen.newLine();
+    wait(500, msec);
+
+    Brain.Screen.print("Check Optical Sensor...");
+    Brain.Screen.newLine();
+    wait(500, msec);
+
+    Brain.Screen.print("Check Distance Sensor...");
+    Brain.Screen.newLine();
+    Brain.Screen.print("Steering away from wall...");
+    Brain.Screen.newLine();
+    wait(500, msec);
+
+    Brain.Screen.print("Check Distance Sensor...");
+    Brain.Screen.newLine();
+    Brain.Screen.print("Steering away from wall...");
+    Brain.Screen.newLine();
+    wait(500, msec);
+
+    Brain.Screen.print("Check Bumper Sensor...");
+    Brain.Screen.newLine();
+    wait(500, msec);
+
+  }
+
+  return 0;
+}
+
 int main() {
   // Begin project code
 
-  task rc_auto_loop_task_Controller(rc_auto_loop_function_Controller);
+  thread controllerLoop = thread(rc_auto_loop_function_Controller);
+  thread sensorCheck = thread(sensor_check);
 
   while(1){
     vexTaskSleep(100);
