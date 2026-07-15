@@ -8,10 +8,16 @@
 /*                                                                                        */      
 /*    Configuration:    Clawbot Template (Individual Motors + Controller)                 */
 /*                      Controller                                                        */
-/*                      Left Motor in Port 1                                              */
-/*                      Right Motor in Port 6                                             */
+/*                      > MOTORS:                                                         */ 
+/*                      Left Motor in Port 6                                              */
+/*                      Right Motor in Port 1                                             */
 /*                      Claw Motor in Port 4                                              */
 /*                      Arm Motor in Port 10                                              */
+/*                      > SENSORS:                                                        */ 
+/*                      TouchLED in Port 2                                                */
+/*                      Optical Sensor in Port 3                                          */
+/*                      Distance Sensor in Port 7                                         */
+/*                      Bumper in Port 8                                                  */
 /*                                                                                        */      
 /*----------------------------------------------------------------------------------------*/
 
@@ -27,10 +33,11 @@ brain Brain;
 // Robot configuration code.
 inertial BrainInertial = inertial();
 controller Controller = controller();
+
 motor ClawMotor = motor(PORT4, false);
 motor ArmMotor = motor(PORT10, true);
-motor LeftDriveSmart = motor(PORT1, 1, false);
-motor RightDriveSmart = motor(PORT6, 1, true);
+motor LeftDriveSmart = motor(PORT6, 1, false);
+motor RightDriveSmart = motor(PORT1, 1, true);
 
 void calibrateDrivetrain() {
   wait(200, msec);
@@ -64,23 +71,27 @@ int rc_auto_loop_function_Controller() {
     // calculate the drivetrain motor velocities from the controller joystick axies
     // left = AxisA
     // right = AxisD
-    int drivetrainLeftSideSpeed = Controller.AxisA.position();
-    int drivetrainRightSideSpeed = Controller.AxisD.position();
+    int drivetrainNorthSouthSpeed = Controller.AxisA.position();
+    int drivetrainEastWestSpeed = Controller.AxisC.position();
 
     // threshold the variable channels so the drive does not
     // move if the joystick axis does not return exactly to 0
     const int deadband = 15;
-    if(abs(drivetrainLeftSideSpeed) < deadband) {
-      drivetrainLeftSideSpeed = 0;
+    if(abs(drivetrainNorthSouthSpeed) < deadband) {
+      drivetrainNorthSouthSpeed = 0;
     }
 
-    if(abs(drivetrainRightSideSpeed) < deadband) {
-      drivetrainRightSideSpeed = 0;
+    if(abs(drivetrainEastWestSpeed) < deadband) {
+      drivetrainEastWestSpeed = 0;
     }
+
+    // define left and right speeds
+    int drivetrainLeftSideSpeed = (drivetrainNorthSouthSpeed + drivetrainEastWestSpeed);
+    int drivetrainRightSideSpeed = (drivetrainNorthSouthSpeed - drivetrainEastWestSpeed);
 
     // update motor velocities
-    LeftDriveSmart.spin(forward, drivetrainLeftSideSpeed, percent);
-    RightDriveSmart.spin(forward, drivetrainRightSideSpeed, percent);
+    LeftDriveSmart.spin(reverse, drivetrainLeftSideSpeed, percent);
+    RightDriveSmart.spin(reverse, drivetrainRightSideSpeed, percent);
 
     // Claw and Arm motors
     ClawMotor.spin(forward, control_l1, percent);
