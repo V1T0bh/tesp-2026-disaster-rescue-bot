@@ -9,15 +9,15 @@
 /*    Configuration:    Clawbot Template (Individual Motors + Controller)                 */
 /*                      Controller                                                        */
 /*                      > MOTORS:                                                         */ 
-/*                      Left Motor in Port 6                                              */
-/*                      Right Motor in Port 1                                             */
-/*                      Claw Motor in Port 4                                              */
-/*                      Arm Motor in Port 10                                              */
+/*                      Left Motor in Port 9                                              */
+/*                      Right Motor in Port 10                                            */
+/*                      Claw Motor in Port 3                                              */
+/*                      Arm Motor in Port 4                                               */
 /*                      > SENSORS:                                                        */ 
-/*                      TouchLED in Port 2                                                */
-/*                      Optical Sensor in Port 3                                          */
-/*                      Distance Sensor in Port 7                                         */
-/*                      Bumper in Port 8                                                  */
+/*                      TouchLED in Port -                                                */
+/*                      Optical Sensor in Port 12                                          */
+/*                      Distance Sensor in Port 8                                         */
+/*                      Bumper in Port -                                                  */
 /*                                                                                        */      
 /*----------------------------------------------------------------------------------------*/
 
@@ -35,14 +35,14 @@ inertial BrainInertial = inertial();
 controller Controller = controller();
 
 motor ClawMotor = motor(PORT4, false);
-motor ArmMotor = motor(PORT10, true);
-motor LeftDriveSmart = motor(PORT6, 1, false);
-motor RightDriveSmart = motor(PORT1, 1, true);
+motor ArmMotor = motor(PORT3, true);
+motor LeftDriveSmart = motor(PORT9, 1, false);
+motor RightDriveSmart = motor(PORT10, 1, true);
 
-touchled TouchLED2 = touchled(PORT2);
-optical Optical3 = optical(PORT3);
-distance Distance7 = distance(PORT7);
-bumper Bumper8 = bumper(PORT8);
+touchled TouchLED = touchled(PORT11);
+optical Optical = optical(PORT12);
+distance Distance = distance(PORT8);
+bumper Bumper = bumper(PORT8);
 
 void calibrateDrivetrain() {
   wait(200, msec);
@@ -65,19 +65,26 @@ int rc_auto_loop_function_Controller() {
   // update the motors based on the input values
   while(true) {
 
-    const int MAX_SPEED = 50;
+    const int MAX_SPEED = 25;
 
     // buttons
     // Three values, max, 0 and -max.
     //
-    int control_l1  = (Controller.ButtonLUp.pressing() - Controller.ButtonLDown.pressing()) * MAX_SPEED;
-    int control_r1  = (Controller.ButtonRUp.pressing() - Controller.ButtonRDown.pressing()) * MAX_SPEED;
+    int control_l1 = ((Controller.ButtonLUp.pressing() - Controller.ButtonLDown.pressing()) * MAX_SPEED );
+    int control_r1; // = (Controller.ButtonRUp.pressing() - Controller.ButtonRDown.pressing()) * MAX_SPEED;
+    if (Controller.ButtonRUp.pressing()) {
+      control_r1 = 25;
+    }
+    if (Controller.ButtonRDown.pressing()) {
+      control_r1 = -25;
+    }
+    
 
     // calculate the drivetrain motor velocities from the controller joystick axies
     // left = AxisA
     // right = AxisD
-    int drivetrainNorthSouthSpeed = Controller.AxisA.position();
-    int drivetrainEastWestSpeed = Controller.AxisC.position();
+    int drivetrainNorthSouthSpeed = -1*Controller.AxisA.position();
+    int drivetrainEastWestSpeed = -1*Controller.AxisC.position();
 
     // threshold the variable channels so the drive does not
     // move if the joystick axis does not return exactly to 0
@@ -91,8 +98,8 @@ int rc_auto_loop_function_Controller() {
     }
 
     // define left and right speeds
-    int drivetrainLeftSideSpeed = (drivetrainNorthSouthSpeed + drivetrainEastWestSpeed);
-    int drivetrainRightSideSpeed = (drivetrainNorthSouthSpeed - drivetrainEastWestSpeed);
+    int drivetrainLeftSideSpeed = (drivetrainNorthSouthSpeed + 0.25*drivetrainEastWestSpeed);
+    int drivetrainRightSideSpeed = (drivetrainNorthSouthSpeed - 0.25*drivetrainEastWestSpeed);
 
     // update motor velocities
     LeftDriveSmart.spin(reverse, drivetrainLeftSideSpeed, percent);
@@ -109,35 +116,65 @@ int rc_auto_loop_function_Controller() {
 }
 
 int sensor_check() {
+  while (1){
+    if (Optical.isNearObject()){
+      Brain.Screen.print("Optical: Object Near");
+    } else {
+      Brain.Screen.print("Optical: Object Far");
+    }
+    double distance = Distance.objectDistance(mm);
+    Brain.Screen.print("Distance: %.2f", distance);
 
-  while (true){
     wait(25, msec);
 
-    // DUMMY CODE
-    Brain.Screen.print("Check TouchLED...");
-    Brain.Screen.newLine();
-    wait(500, msec);
+    Brain.Screen.clearScreen();
+    Brain.Screen.setCursor(1,1);
+  }
 
-    Brain.Screen.print("Check Optical Sensor...");
-    Brain.Screen.newLine();
-    wait(500, msec);
+  return 0;
+}
 
-    Brain.Screen.print("Check Distance Sensor...");
-    Brain.Screen.newLine();
-    Brain.Screen.print("Steering away from wall...");
-    Brain.Screen.newLine();
-    wait(500, msec);
+int scan_color() {
+  // debug for scan color and show in touchled
+  Optical.setLight(ledState::on);
+  wait(100, msec);
+  color colorScanned = Optical.color();
+  TouchLED.setBrightness(100);
+  TouchLED.setColor(colorScanned);
+  wait(100, msec);
+  Optical.setLight(ledState::off);
 
-    Brain.Screen.print("Check Distance Sensor...");
-    Brain.Screen.newLine();
-    Brain.Screen.print("Steering away from wall...");
-    Brain.Screen.newLine();
-    wait(500, msec);
+  return 0;
+}
 
-    Brain.Screen.print("Check Bumper Sensor...");
-    Brain.Screen.newLine();
-    wait(500, msec);
+int rc_controller_buttons_loop(){
 
+  while (1){
+    if (Controller.ButtonEUp.pressing() == true){
+
+      Brain.playNote(4, 4, 400);  // G
+      wait(50, msec);
+
+      Brain.playNote(4, 4, 400);  // G
+      wait(50, msec);
+
+      Brain.playNote(4, 4, 400);  // G
+      wait(100, msec);
+
+      Brain.playNote(4, 1, 300);  // D
+      Brain.playNote(4, 6, 150);  // B
+      Brain.playNote(4, 4, 450);  // G
+      wait(100, msec);
+
+      Brain.playNote(4, 1, 300);  // D
+      Brain.playNote(4, 6, 150);  // B
+      Brain.playNote(4, 4, 500);  // G
+    }
+    if (Controller.ButtonEDown.pressing()){
+    scan_color();
+  }
+
+    wait(50, msec);
   }
 
   return 0;
@@ -148,6 +185,7 @@ int main() {
 
   thread controllerLoop = thread(rc_auto_loop_function_Controller);
   thread sensorCheck = thread(sensor_check);
+  thread controllerLoop2 = thread(rc_controller_buttons_loop);
 
   while(1){
     vexTaskSleep(100);
