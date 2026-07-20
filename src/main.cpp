@@ -48,7 +48,10 @@ bumper Bumper = bumper(PORT8);
 const int MAX_SPEED_CLAW = 25; // adjust if claw grip is too tight or loose
 const int MAX_SPEED_ARM = 25; // adjust if arm is moving too agressively or weakly
 const int turnSensitivity = 0.25; // adjust if turns are too weak or strong
-bool isfollowingWall = false;
+bool isFollowingWall = false;
+double targetDistance = 50.0; // default: 50.0 mm from wall detected on distance sensor
+int drivetrainRightSideSpeed;
+int drivetrainLeftSideSpeed;
 
 
 // calibrate drivetrain and intertial sensors
@@ -104,6 +107,8 @@ int rc_auto_loop_function_Controller() {
     // define left and right speeds
     int drivetrainLeftSideSpeed = (drivetrainNorthSouthSpeed + turnSensitivity*drivetrainEastWestSpeed);
     int drivetrainRightSideSpeed = (drivetrainNorthSouthSpeed - turnSensitivity*drivetrainEastWestSpeed);
+
+    follow_wall();
 
     // update motor velocities
     LeftDriveSmart.spin(reverse, drivetrainLeftSideSpeed, percent);
@@ -173,9 +178,17 @@ int rc_controller_buttons_loop(){
       Brain.playNote(4, 6, 150);  // B
       Brain.playNote(4, 4, 500);  // G
     }
+
     if (Controller.ButtonEDown.pressing()){
     scan_color();
-  }
+    }
+
+    if (Controller.ButtonFUp.pressing()) {
+      // toggle wall following
+      isFollowingWall = !(isFollowingWall);
+      targetDistance = Distance.objectDistance(mm);
+      Brain.playNote(4,1,200);
+    }
 
     wait(50, msec);
   }
@@ -184,11 +197,59 @@ int rc_controller_buttons_loop(){
 }
 
 int follow_wall() {
+  const double kP = 0.35; // correction coefficient
+  const double baseSpeed = 40.0;        // percentage
+  const double maxCorrection = 20.0;
+  const double deadband = 5.0;          // mm
 
-  while (true) {
-    if (isfollowingWall){
-      // wall following algo
+  if (isFollowingWall){
+    // wall following algo
+    double distance = Distance.objectDistance(mm);
+
+    // // Ignore invalid or missing wall readings
+    // if (distance <= 0 || distance > 500) {
+    //     LeftDriveSmart.setVelocity(baseSpeed, percent);
+    //     RightDriveSmart.setVelocity(baseSpeed, percent);
+
+    //     LeftDriveSmart.spin(forward);
+    //     RightMotor.spin(forward);
+
+    //     wait(20, msec);
+    //     continue;
+    // }
+
+    // Positive error means the robot is too close to the wall
+    double error = targetDistance - distance;
+
+    // Prevent constant small steering changes
+    if (fabs(error) < deadband) {
+        error = 0;
     }
+
+    double correction = kP * error;
+
+    // Limit how sharply the robot can correct
+    if (correction > maxCorrection) {
+        correction = maxCorrection;
+    } else if (correction < -maxCorrection) {
+        correction = -maxCorrection;
+    }
+
+    /*
+    * Too close to right wall:
+    * error is positive
+    * left motor slows, right motor speeds up
+    * robot steers left
+    *
+    * Too far from right wall:
+    * error is negative
+    * left motor speeds up, right motor slows
+    * robot steers right
+    */
+    double drivetrainLeftSideSpeed = drivetrainLeftSideSpeed - correction;
+    double drivetrainRightSideSpeed = drivetrainLeftSideSpeed + correction;
+
+    wait(20, msec);
   }
 
   return 0;
@@ -200,7 +261,6 @@ int main() {
   thread controllerLoop = thread(rc_auto_loop_function_Controller);
   thread sensorCheck = thread(sensor_check);
   thread controllerLoop2 = thread(rc_controller_buttons_loop);
-  thread wallFollowing = thread(follow_wall);
 
   while(1){
     vexTaskSleep(100);
