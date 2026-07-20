@@ -48,7 +48,7 @@ bumper Bumper = bumper(PORT8);
 const int MAX_SPEED_CLAW = 25; // adjust if claw grip is too tight or loose
 const int MAX_SPEED_ARM = 25; // adjust if arm is moving too agressively or weakly
 const int turnSensitivity = 0.25; // adjust if turns are too weak or strong
-bool followingWall = false;
+bool isfollowingWall = false;
 
 
 // calibrate drivetrain and intertial sensors
@@ -154,7 +154,7 @@ int rc_controller_buttons_loop(){
 
   while (1){
     if (Controller.ButtonEUp.pressing() == true){
-
+      // fun starwars song (idk)
       Brain.playNote(4, 4, 400);  // G
       wait(50, msec);
 
@@ -183,12 +183,24 @@ int rc_controller_buttons_loop(){
   return 0;
 }
 
+int follow_wall() {
+
+  while (true) {
+    if (isfollowingWall){
+      // wall following algo
+    }
+  }
+
+  return 0;
+}
+
 int main() {
   // Begin project code
 
   thread controllerLoop = thread(rc_auto_loop_function_Controller);
   thread sensorCheck = thread(sensor_check);
   thread controllerLoop2 = thread(rc_controller_buttons_loop);
+  thread wallFollowing = thread(follow_wall);
 
   while(1){
     vexTaskSleep(100);
