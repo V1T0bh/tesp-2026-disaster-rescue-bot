@@ -15,7 +15,7 @@
 /*                      Arm Motor in Port 4                                               */
 /*                      > SENSORS:                                                        */ 
 /*                      TouchLED in Port -                                                */
-/*                      Optical Sensor in Port 12                                          */
+/*                      Optical Sensor in Port 12                                         */
 /*                      Distance Sensor in Port 8                                         */
 /*                      Bumper in Port -                                                  */
 /*                                                                                        */      
@@ -44,6 +44,14 @@ optical Optical = optical(PORT12);
 distance Distance = distance(PORT8);
 bumper Bumper = bumper(PORT8);
 
+// global variables declaration.
+const int MAX_SPEED_CLAW = 25; // adjust if claw grip is too tight or loose
+const int MAX_SPEED_ARM = 25; // adjust if arm is moving too agressively or weakly
+const int turnSensitivity = 0.25; // adjust if turns are too weak or strong
+bool followingWall = false;
+
+
+// calibrate drivetrain and intertial sensors
 void calibrateDrivetrain() {
   wait(200, msec);
   Brain.Screen.print("Calibrating");
@@ -64,19 +72,15 @@ int rc_auto_loop_function_Controller() {
   // process the controller input every 20 milliseconds
   // update the motors based on the input values
   while(true) {
-
-    const int MAX_SPEED = 25;
-
-    // buttons
+    // LR buttons
     // Three values, max, 0 and -max.
-    //
-    int control_l1 = ((Controller.ButtonLUp.pressing() - Controller.ButtonLDown.pressing()) * MAX_SPEED );
+    int control_l1 = ((Controller.ButtonLUp.pressing() - Controller.ButtonLDown.pressing()) * MAX_SPEED_ARM );
     int control_r1; // = (Controller.ButtonRUp.pressing() - Controller.ButtonRDown.pressing()) * MAX_SPEED;
     if (Controller.ButtonRUp.pressing()) {
-      control_r1 = 25;
+      control_r1 = MAX_SPEED_CLAW; // open claw (active)
     }
     if (Controller.ButtonRDown.pressing()) {
-      control_r1 = -25;
+      control_r1 = -1*MAX_SPEED_CLAW; // close claw (active)
     }
     
 
@@ -98,8 +102,8 @@ int rc_auto_loop_function_Controller() {
     }
 
     // define left and right speeds
-    int drivetrainLeftSideSpeed = (drivetrainNorthSouthSpeed + 0.25*drivetrainEastWestSpeed);
-    int drivetrainRightSideSpeed = (drivetrainNorthSouthSpeed - 0.25*drivetrainEastWestSpeed);
+    int drivetrainLeftSideSpeed = (drivetrainNorthSouthSpeed + turnSensitivity*drivetrainEastWestSpeed);
+    int drivetrainRightSideSpeed = (drivetrainNorthSouthSpeed - turnSensitivity*drivetrainEastWestSpeed);
 
     // update motor velocities
     LeftDriveSmart.spin(reverse, drivetrainLeftSideSpeed, percent);
@@ -118,9 +122,9 @@ int rc_auto_loop_function_Controller() {
 int sensor_check() {
   while (1){
     if (Optical.isNearObject()){
-      Brain.Screen.print("Optical: Object Near");
+      Brain.Screen.print("Optical: Near");
     } else {
-      Brain.Screen.print("Optical: Object Far");
+      Brain.Screen.print("Optical: Far");
     }
     double distance = Distance.objectDistance(mm);
     Brain.Screen.print("Distance: %.2f", distance);
@@ -128,7 +132,6 @@ int sensor_check() {
     wait(25, msec);
 
     Brain.Screen.clearScreen();
-    Brain.Screen.setCursor(1,1);
   }
 
   return 0;
